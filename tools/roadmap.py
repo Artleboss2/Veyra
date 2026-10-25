@@ -41,7 +41,7 @@ SHIPPED = [
     ("25 Oct", "VM runner", "Android-x86 9 boots under QEMU TCG"),
     ("25 Oct", "APK audit", "AXML, ARSC and DEX verdicts before launch"),
     ("25 Oct", "Slim installer", "194 KB setup; 1.1 GiB runtime from GitHub"),
-    ("25 Oct", "Beta releases", "0.1 runtime; 0.1.1 licensed build"),
+    ("25 Oct", "Beta releases", "0.1 assets refreshed; 0.1.1 licensed build"),
     ("25 Oct", "Limits documented", "Why ARM64 cannot run in the x86 image"),
     ("25 Oct", "ARM64 proof", "31 hand-built instructions, ~12 MIPS"),
 ]

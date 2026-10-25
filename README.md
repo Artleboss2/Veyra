@@ -285,9 +285,10 @@ cannot provide).
 ### 0.2 - close out the releases
 
 - [x] Publish `Beta-0.1.1` with the licensed installer and current binaries.
+- [x] Re-upload the same `Veyra.exe` and `VeyraSetup.exe` to `Beta-0.1`,
+      replacing the 139,776 B pre-icon build and adding `SHA256SUMS.txt`.
 - [x] Verify the downloaded installer: payload, SHA-256 and runtime manifest.
-- [ ] Verify the installer on a clean Windows profile, not just this machine.
-- [ ] Retire the stale standalone `Veyra.exe` on `Beta-0.1` (139,776 B, pre-icon).
+- [x] Clean-profile install confirmed by the maintainer on a fresh Windows profile.
 
 ### 0.2 - persistence
 
