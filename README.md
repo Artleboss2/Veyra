@@ -11,7 +11,7 @@ Current interface: **v0.1.0-alpha**.
 `VeyraSetup.exe` — a 194 KB installer. It lays down Veyra and adb, then downloads
 the Android image and QEMU (≈ 1.1 GB) from the GitHub release and verifies the
 archive against the published SHA-256 before unpacking. No admin rights required. Current build:
-[`Beta-0.1.1`](https://github.com/Artleboss2/Veyra/releases/tag/Beta-0.1.1).
+[`Beta-0.2`](https://github.com/Artleboss2/Veyra/releases/tag/Beta-0.2).
 
 Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
@@ -285,6 +285,7 @@ cannot provide).
 ### 0.2 - close out the releases
 
 - [x] Publish `Beta-0.1.1` with the licensed installer and current binaries.
+- [x] Publish `Beta-0.2` with the same binaries under the 0.2 name.
 - [x] Re-upload the same `Veyra.exe` and `VeyraSetup.exe` to `Beta-0.1`,
       replacing the 139,776 B pre-icon build and adding `SHA256SUMS.txt`.
 - [x] Verify the downloaded installer: payload, SHA-256 and runtime manifest.
