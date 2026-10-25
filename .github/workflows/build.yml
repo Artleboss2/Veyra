@@ -22,18 +22,24 @@ jobs:
         shell: bash
         run: ./Veyra.exe --selftest build/fixtures/veyra-fixture.apk --out build/selftest.json
 
-      - name: Verify installer payload
+      - name: Verify the installer payload
         shell: bash
         run: |
-          if [ ! -d runtime ]; then
-            echo "runtime/ is not committed, so this build produces a bootstrap-only installer;"
-            echo "skipping payload checks. Attach a full VeyraSetup.exe to a GitHub Release."
-            exit 0
-          fi
           ./VeyraSetup.exe --check --check-out build/installer-check.json
           ./VeyraSetup.exe --extract build/installer-test
           cmp Veyra.exe build/installer-test/Veyra.exe
           ./build/installer-test/Veyra.exe --selftest build/fixtures/veyra-fixture.apk --out build/installer-test/selftest.json
+
+      - name: Verify the release runtime asset
+        shell: bash
+        run: |
+          if [ ! -d runtime ]; then
+            echo "runtime/ is not committed: the release asset is built on a machine that has it."
+            exit 0
+          fi
+          python tools/make_runtime_asset.py
+          ./VeyraSetup.exe --test-install build/install-test \
+            --manifest build/release/runtime.json
 
       - name: Upload executables
         uses: actions/upload-artifact@v4

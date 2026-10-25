@@ -8,8 +8,9 @@ webview, no AI. A phone over ADB remains a supported alternative.
 
 `Veyra.exe` — the UI and package auditor, .NET Framework 4.8, native GDI painting.
 Current interface: **v0.1.0-alpha**.
-`VeyraSetup.exe` — one self-contained installer: Veyra, adb, QEMU and the Android
-image (≈ 1.1 GB on disk), no admin rights required.
+`VeyraSetup.exe` — a 110 KB installer. It lays down Veyra and adb, then downloads
+the Android image and QEMU (≈ 1.1 GB) from the GitHub release and verifies the
+archive against the published SHA-256 before unpacking. No admin rights required.
 
 Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
@@ -51,8 +52,10 @@ returns true and the accelerated path is used.
 
 Run `VeyraSetup.exe`, press **Install**:
 
-- extracts the app and runtime (including a working `adb.exe`) to
-  `%LOCALAPPDATA%\Programs\Veyra`
+- installs Veyra and a working `adb.exe` to `%LOCALAPPDATA%\Programs\Veyra`
+- downloads `veyra-runtime.zip` (the Android 9 image, QEMU and adb) from the release
+  named in `runtime.json`, resumes an interrupted download instead of starting from
+  zero, and refuses to unpack an archive whose SHA-256 does not match the manifest
 - appends `...\Veyra\runtime\adb` to the **per-user** `PATH` (existing entries are
   never touched, duplicates are skipped, the change is broadcast to new shells)
 - creates Start Menu and optional desktop shortcuts
@@ -63,13 +66,22 @@ Run `VeyraSetup.exe`, press **Install**:
 Because adb ships inside the runtime, the app never needs a copy from anywhere
 else: `Settings → ADB path` shows `bundled · runtime\adb\adb.exe`.
 
-The installer is testable without writing outside the project:
+The installer carries only the three application files; everything else is fetched
+at install time. That is why the installer is 110 KB instead of 1.1 GB, and why a
+release can update Veyra without re-uploading the image.
+
+It is testable without writing outside the project:
 
 ```bash
-VeyraSetup.exe --check --check-out build/installer-check.json
+VeyraSetup.exe --check --online --check-out build/installer-check.json
 VeyraSetup.exe --extract build/installer-test
+VeyraSetup.exe --test-install build/install-test --manifest <runtime.json URL>
 VeyraSetup.exe --shot build/shots/installer.png
 ```
+
+`--test-install` runs the whole download, verification and unpack into a chosen
+folder and deliberately skips the registry, `PATH` and shortcuts, so the slow and
+destructive parts stay out of a test run.
 
 ## Running an APK
 
@@ -160,7 +172,7 @@ scratch with the JDK plus D8.
 | Animated backdrop | ~6 ms per 90 ms tick, only while the window is focused |
 | Idle CPU | 0.03 % of one core with the window unfocused; 2.1-2.7 % if every second forces a rebuild |
 | Self-test working set | 15 MB, with no window created |
-| Installer | 1.10 GB, 248 payload entries |
+| Installer | 110 KB (3 embedded files); 245 runtime entries downloaded on install |
 
 The 500 MB ceiling is enforced in code: the memory bar turns amber at 400 MB and
 the console records a breach, which the self-test treats as a failure.
@@ -182,12 +194,16 @@ or is minimised. That is why idle CPU stays at a fraction of a percent.
 Uses the C# compiler shipped with .NET Framework 4.8; no NuGet, no MSBuild:
 
 ```bash
-./build.sh          # app, uninstaller, installer bootstrap + runtime bundle
+```bash
+./build.sh            # app, uninstaller, installer with the embedded app payload
+./build.sh --runtime  # also build build/release/veyra-runtime.zip and runtime.json
 ```
 
-If `runtime/` exists, `tools/package_installer.py` appends it as a ZIP payload with
-a 24-byte footer; the installer reads it in place through a range stream instead of
-copying a gigabyte to a temp folder.
+`tools/package_installer.py   embeds the app payload
+tools/make_runtime_asset.py  release runtime asset + manifest
+behind a 24-byte footer, which the installer reads in place through a range stream.
+`tools/make_runtime_asset.py` packs `runtime/` into the release asset and writes
+`runtime.json` (byte count and SHA-256) beside it.
 
 Assemble `runtime/` from the components (not committed):
 
@@ -197,8 +213,16 @@ runtime/android/   kernel, initrd.img, android-x86.iso
 runtime/adb/       adb.exe, AdbWinApi.dll, AdbWinUsbApi.dll
 ```
 
-It is not in the repository — binaries never are. Attach `VeyraSetup.exe` to a
-GitHub **Release** (under the 2 GB asset limit), not to the source tree.
+Nothing in `runtime/` is committed — binaries never are. Attach the installer and
+the runtime asset to one GitHub **Release** (each asset stays under the 2 GB limit):
+
+```bash
+gh release create v0.1.0-alpha build/release/veyra-runtime.zip build/release/runtime.json \
+  VeyraSetup.exe --title "Veyra v0.1.0-alpha" --notes "First public build."
+```
+
+The installer reads `runtime.json` from that tag first and falls back to
+`releases/latest`, so a new app build only needs a new installer.
 
 Tooling used to build the image (kept in `build/vm/`, ignored):
 
@@ -226,7 +250,7 @@ data directory. Useful when testing a portable folder.
 
 ```
 Veyra.exe                 final UI binary
-VeyraSetup.exe            self-contained installer (ignored by git)
+VeyraSetup.exe            installer, app payload embedded (ignored by git)
 src/
   Vm/LocalVm.cs           QEMU launch, WHPX probe, ADB wait/install
   Apk/                    AXML, ARSC, DEX parsers and verdict engine

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Builds Veyra.exe, Uninstall.exe and VeyraSetup.exe with the .NET Framework 4.8
 # compiler already present on this machine. No downloads, no NuGet, no MSBuild.
-# If runtime/ exists, the installer is turned into a self-extracting bundle.
+# The app payload (Veyra.exe, Uninstall.exe, README) is appended to VeyraSetup.exe;
+# the ~1.1 GB Android runtime is a release asset the installer downloads.
+# Pass --runtime to also rebuild that asset into build/release/.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -50,15 +52,19 @@ if [ ! -s "$SETUP" ]; then
   exit 5
 fi
 
-if [ -d "$ROOT/runtime" ]; then
-  echo "==> bundling runtime payload"
-  if ! python "$(cygpath -w "$ROOT/tools/package_installer.py")"; then
-    echo "FATAL: packaging failed; removing the incomplete installer" >&2
-    rm -f "$SETUP"
-    exit 6
+echo "==> embedding the application payload"
+if ! python "$(cygpath -w "$ROOT/tools/package_installer.py")"; then
+  echo "FATAL: packaging failed; removing the incomplete installer" >&2
+  rm -f "$SETUP"
+  exit 6
+fi
+
+if [ "${1:-}" = "--runtime" ]; then
+  echo "==> building the release runtime asset"
+  if ! python "$(cygpath -w "$ROOT/tools/make_runtime_asset.py")"; then
+    echo "FATAL: runtime asset build failed" >&2
+    exit 7
   fi
-else
-  echo "==> runtime/ not present: installer is a bootstrap only"
 fi
 
 ls -lh "$OUT" "$SETUP"
