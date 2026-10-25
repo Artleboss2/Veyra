@@ -145,10 +145,31 @@ scratch with the JDK plus D8.
 
 - This is Android 9 (2020), **without Google Play Services or the Play Store**.
   Apps that need Play Services, SafetyNet or a Google account will fail or degrade.
-- **ARM-only APKs cannot run.** The VM is x86_64; packages that ship only
-  `arm64-v8a`/`armeabi-v7a` native code are rejected with
-  `INSTALL_FAILED_NO_MATCHING_ABIS`. Pure-Java packages and x86/x86_64 native
-  packages work. Veyra says which one you have.
+- **ARM-only APKs cannot run.** The VM is x86_64, so a package that ships only
+  `armeabi-v7a` or `arm64-v8a` native libraries fails to install with
+  `INSTALL_FAILED_NO_MATCHING_ABIS`; Veyra names the ABI it found before you try.
+  Pure-Java packages and x86/x86_64 native packages work.
+
+  This is a documented choice, not an omission. Android-x86 9 ships an ARM bridge
+  hook (`/system/bin/enable_nativebridge`, started by `persist.sys.nativebridge`),
+  but the only translator it can load is Intel Houdini, which handles **ARM32
+  only**: 41 MB, proprietary, and not redistributable, so Veyra neither bundles it
+  nor pretends a download would fix the problem. Every `arm64-v8a`-only package
+  would still fail, because the image's ART and linker are 32-bit-ARM at best.
+  ARM64 needs a different Android image - Android 13 with Google's
+  `libndk_translation`, as Bliss OS 16 ships - and on a host without working WHPX
+  that image runs under QEMU's software translation. Linaro measures AArch64
+  guests about **12x slower** than a hardware-assisted reference, and that was on
+  a modern machine; on two Broadwell cores it is minutes per boot, not a runtime
+  anyone would use. Full ARM emulation is therefore out of scope for this project,
+  and the honest answer for an ARM-only package is a phone or a faster host.
+
+  For reference, the alternatives were checked and rejected: Windows Subsystem for
+  Android was discontinued in March 2025 and needs the virtualization this laptop
+  cannot provide; Waydroid and Anbox are Linux-only; LDPlayer, Genymotion and
+  Android Studio's emulator all require hardware virtualization; the only
+  no-virtualization commercial path is BlueStacks 5.14.22 on Android 7, a separate
+  product that cannot be embedded and does not run ARM64 packages either.
 - Graphics are rendered by the CPU under QEMU. Simple apps are usable; 3D games
   are not. This is not BlueStacks and does not pretend to be.
 - First boot is slow: Android compiles its framework. With WHPX it is minutes;
