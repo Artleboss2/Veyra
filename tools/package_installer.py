@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Append the small application payload to the Veyra installer bootstrap.
 
-Only Veyra.exe, Uninstall.exe and the README travel inside VeyraSetup.exe
-(~200 KB). The 1.1 GB Android runtime is a release asset the installer
+Only Veyra.exe, Uninstall.exe, the README and the MIT licence travel inside
+VeyraSetup.exe (~200 KB). The 1.1 GB Android runtime is a release asset the installer
 downloads and verifies at install time, so the installer stays small and a
 new app build never requires re-uploading the image.
 
@@ -33,6 +33,7 @@ def main():
         zf.write(APP, "Veyra.exe")
         zf.write(UNINST, "Uninstall.exe")
         zf.write(os.path.join(ROOT, "README.md"), "README.md")
+        zf.write(os.path.join(ROOT, "LICENSE"), "LICENSE")
 
     payload_size = os.path.getsize(PAYLOAD)
     if payload_size > MAX_PAYLOAD:

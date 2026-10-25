@@ -67,8 +67,8 @@ Run `VeyraSetup.exe`, press **Install**:
 Because adb ships inside the runtime, the app never needs a copy from anywhere
 else: `Settings → ADB path` shows `bundled · runtime\adb\adb.exe`.
 
-The installer carries only the three application files; everything else is fetched
-at install time. That is why the installer is 190 KB instead of 1.1 GB, and why a
+The installer carries only the four application files (Veyra, the uninstaller, the
+README and the MIT licence); everything else is fetched at install time. That is why the installer is 190 KB instead of 1.1 GB, and why a
 release can update Veyra without re-uploading the image.
 
 It is testable without writing outside the project:
@@ -194,7 +194,7 @@ scratch with the JDK plus D8.
 | Animated backdrop | ~6 ms per 90 ms tick, only while the window is focused |
 | Idle CPU | 0.03 % of one core with the window unfocused; 2.1-2.7 % if every second forces a rebuild |
 | Self-test working set | 15 MB, with no window created |
-| Installer | 190 KB (3 embedded files); 245 runtime entries downloaded on install |
+| Installer | 190 KB (4 embedded files); 245 runtime entries downloaded on install |
 
 The 500 MB ceiling is enforced in code: the memory bar turns amber at 400 MB and
 the console records a breach, which the self-test treats as a failure.
@@ -278,6 +278,7 @@ data directory. Useful when testing a portable folder.
 ## Repository layout
 
 ```
+LICENSE                   MIT licence for Veyra's own code
 Veyra.exe                 final UI binary
 VeyraSetup.exe            installer, app payload embedded (ignored by git)
 src/
@@ -294,6 +295,25 @@ tools/package_installer.py
 
 ## Licensing
 
-QEMU is GPLv2, Android-x86 is GPLv2 and adb is Apache-2.0. Their notices are
-included in `runtime/` when assembled. Veyra itself ships without a license file;
-add one before publishing the source.
+Veyra itself is **MIT** licensed - see [`LICENSE`](LICENSE). That covers the
+sources in `src/`, `installer/`, `tools/`, `bench/` and the text in this
+repository, and it is the file the installer writes next to the application.
+
+It does **not** cover what Veyra downloads or runs. Those components keep their
+own licences, and their notices travel with them:
+
+| Component | Licence | Where the notice lives |
+|---|---|---|
+| QEMU 11.1 | GPLv2 | `runtime/qemu/`, as shipped by QEMU |
+| Android-x86 9.0-r2 | GPLv2 | `runtime/android/`, in the image |
+| adb (Android platform-tools) | Apache-2.0 | `runtime/adb/` |
+
+Because QEMU and Android-x86 are GPLv2 and Veyra invokes them as separate
+processes rather than linking them, the MIT terms above apply only to Veyra's own
+code. If you redistribute a bundle that contains `runtime/`, you are
+redistributing those projects too and must keep their notices and source
+offer intact.
+
+Veyra deliberately ships no ARM translators (Intel Houdini, Google
+`libndk_translation`): both are proprietary and neither grants redistribution,
+which is one of the reasons ARM packages are out of scope as documented above.
