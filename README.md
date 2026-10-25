@@ -163,6 +163,14 @@ scratch with the JDK plus D8.
   a modern machine; on two Broadwell cores it is minutes per boot, not a runtime
   anyone would use. Full ARM emulation is therefore out of scope for this project,
   and the honest answer for an ARM-only package is a phone or a faster host.
+  For a concrete measure of what a bridge would take, this repository
+  carries a working prototype in
+  [`research/arm64-bridge`](research/arm64-bridge/README.md): a hand-assembled
+  AArch64 shared object, validated against `qemu-system-aarch64`, executed by a
+  C# ELF loader and interpreter with an `SVC` host-call bridge. It runs, it is
+  checked against real AArch64 semantics, and it measures ~12 MIPS — about 1,000x
+  slower than native and still missing NEON, atomics, relocations and ART's
+  `libnativebridge` ABI. It proves the mechanism, not the product.
 
   For reference, the alternatives were checked and rejected: Windows Subsystem for
   Android was discontinued in March 2025 and needs the virtualization this laptop
@@ -289,7 +297,7 @@ src/
   NetProbe.cs             keyless speed test + settings
 assets/veyra.ico         application icon, embedded in every executable
 installer/                installer UI, bundled-archive reader, uninstaller
-tools/package_installer.py
+research/arm64-bridge/   ARM64 bridge proof of concept (not shipped)
 .github/workflows/build.yml
 ```
 
