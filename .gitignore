@@ -1,0 +1,36 @@
+# Build artefacts (produced by build.sh)
+/Veyra.exe
+/VeyraSetup.exe
+/veyra.cfg
+/veyra-crash.log
+
+# Generated fixtures, screenshots, reports
+/build/
+
+# Benchmark build intermediates (keystore, classes, dex); the APK is committed
+/bench/build/
+/tools/r8/
+
+# Downloaded VM components and assembled runtime (never commit binaries)
+/runtime/
+/dist/
+*.iso
+*.qcow2
+*.raw
+
+# Generated reports and tool metadata
+/.freebuff/
+/veyra-selftest.json
+/Veyra Bench-veyra-report.txt
+
+# IDE / OS noise
+.vs/
+.vscode/
+*.user
+*.suo
+Thumbs.db
+desktop.ini
+
+# Python bytecode
+__pycache__/
+*.pyc
