@@ -8,9 +8,10 @@ webview, and no AI at runtime. A phone over ADB remains a supported alternative.
 
 `Veyra.exe` — the UI and package auditor, .NET Framework 4.8, native GDI painting.
 Current interface: **v0.1.0-alpha**.
-`VeyraSetup.exe` — a 190 KB installer. It lays down Veyra and adb, then downloads
+`VeyraSetup.exe` — a 194 KB installer. It lays down Veyra and adb, then downloads
 the Android image and QEMU (≈ 1.1 GB) from the GitHub release and verifies the
-archive against the published SHA-256 before unpacking. No admin rights required.
+archive against the published SHA-256 before unpacking. No admin rights required. Current build:
+[`Beta-0.1.1`](https://github.com/Artleboss2/Veyra/releases/tag/Beta-0.1.1).
 
 Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
@@ -62,7 +63,7 @@ next to the executable, and the installer writes to
 `PATH`, and needs no administrator rights. The Android image is not embedded in
 `VeyraSetup.exe`; the installer downloads `veyra-runtime.zip` (about 1.1 GiB)
 from the release named in `runtime.json`, verifies its SHA-256 and unpacks it.
-That is what keeps the installer at 190 KB and lets the runtime be updated
+That is what keeps the installer at 194 KB and lets the runtime be updated
 without shipping a new setup program.
 
 ## Requirements
@@ -104,7 +105,7 @@ Because adb ships inside the runtime, the app never needs a copy from anywhere
 else: `Settings → ADB path` shows `bundled · runtime\adb\adb.exe`.
 
 The installer carries only the four application files (Veyra, the uninstaller, the
-README and the MIT licence); everything else is fetched at install time. That is why the installer is 190 KB instead of 1.1 GB, and why a
+README and the MIT licence); everything else is fetched at install time. That is why the installer is 194 KB instead of 1.1 GB, and why a
 release can update Veyra without re-uploading the image.
 
 It is testable without writing outside the project:
@@ -281,12 +282,12 @@ cannot provide).
 
 ## To do
 
-### 0.2 - close out Beta-0.1
+### 0.2 - close out the releases
 
-- [ ] Re-upload `VeyraSetup.exe` and `Veyra.exe` to the `Beta-0.1` release, so the
-      published installer carries the MIT notice and the current icon build.
-- [ ] Verify that installer on a clean Windows profile, not just this machine.
-- [ ] Replace the stale standalone `Veyra.exe` asset (139,776 B, pre-icon).
+- [x] Publish `Beta-0.1.1` with the licensed installer and current binaries.
+- [x] Verify the downloaded installer: payload, SHA-256 and runtime manifest.
+- [ ] Verify the installer on a clean Windows profile, not just this machine.
+- [ ] Retire the stale standalone `Veyra.exe` on `Beta-0.1` (139,776 B, pre-icon).
 
 ### 0.2 - persistence
 
@@ -321,7 +322,7 @@ cannot provide).
 | Animated backdrop | ~6 ms per 90 ms tick, only while the window is focused |
 | Idle CPU | 0.03 % of one core with the window unfocused; 2.1-2.7 % if every second forces a rebuild |
 | Self-test working set | 15 MB, with no window created |
-| Installer | 190 KB (4 embedded files); 245 runtime entries downloaded on install |
+| Installer | 194 KB (4 embedded files); 245 runtime entries downloaded on install |
 
 The 500 MB ceiling is enforced in code: the memory bar turns amber at 400 MB and
 the console records a breach, which the self-test treats as a failure.

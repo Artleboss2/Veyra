@@ -40,14 +40,13 @@ SHIPPED = [
     ("24 Oct", "UI shell", "C# single-bitmap window, 52 MB working set"),
     ("25 Oct", "VM runner", "Android-x86 9 boots under QEMU TCG"),
     ("25 Oct", "APK audit", "AXML, ARSC and DEX verdicts before launch"),
-    ("25 Oct", "Slim installer", "190 KB setup; 1.1 GiB runtime from GitHub"),
-    ("25 Oct", "Beta-0.1", "Icon, self-test and release assets"),
+    ("25 Oct", "Slim installer", "194 KB setup; 1.1 GiB runtime from GitHub"),
+    ("25 Oct", "Beta releases", "0.1 runtime; 0.1.1 licensed build"),
     ("25 Oct", "Limits documented", "Why ARM64 cannot run in the x86 image"),
     ("25 Oct", "ARM64 proof", "31 hand-built instructions, ~12 MIPS"),
 ]
 
 NEXT = [
-    ("0.2", "Installer refresh", "Ship the licensed build with its MIT notice; replace the stale release exe"),
     ("0.2", "Persistence", "Keep installed packages, app data and settings across VM restarts"),
     ("0.3", "Snapshots", "Save and resume VM state so relaunch skips the multi-minute boot"),
     ("0.4", "ARM64 spike", "Boot Bliss OS 16.9.7 (Android 13, libndk) on TCG, measure, review licence"),
