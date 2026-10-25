@@ -54,7 +54,8 @@ Run `VeyraSetup.exe`, press **Install**:
 
 - installs Veyra and a working `adb.exe` to `%LOCALAPPDATA%\Programs\Veyra`
 - downloads `veyra-runtime.zip` (the Android 9 image, QEMU and adb) from the release
-  named in `runtime.json`, resumes an interrupted download instead of starting from
+  named in `runtime.json` (read from tag `Beta-0.1`, then from `releases/latest`),
+  resumes an interrupted download instead of starting from
   zero, and refuses to unpack an archive whose SHA-256 does not match the manifest
 - appends `...\Veyra\runtime\adb` to the **per-user** `PATH` (existing entries are
   never touched, duplicates are skipped, the change is broadcast to new shells)
@@ -224,8 +225,8 @@ Nothing in `runtime/` is committed — binaries never are. Attach the installer 
 the runtime asset to one GitHub **Release** (each asset stays under the 2 GB limit):
 
 ```bash
-gh release create v0.1.0-alpha build/release/veyra-runtime.zip build/release/runtime.json \
-  VeyraSetup.exe --title "Veyra v0.1.0-alpha" --notes "First public build."
+gh release create Beta-0.1 build/release/veyra-runtime.zip build/release/runtime.json \
+  Veyra.exe VeyraSetup.exe --title "Veyra Beta 0.1" --notes "First public build."
 ```
 
 The installer reads `runtime.json` from that tag first and falls back to

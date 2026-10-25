@@ -23,7 +23,7 @@ namespace VeyraSetup
         internal const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Veyra";
 
         /// <summary>Release tag that holds the runtime asset and its manifest.</summary>
-        internal const string ReleaseTag = "v0.1.0-alpha";
+        internal const string ReleaseTag = "Beta-0.1";
         internal const string ManifestName = "runtime.json";
         internal const string RuntimeAssetName = "veyra-runtime.zip";
         private const string RepoUrl = "https://github.com/Artleboss2/Veyra";
@@ -206,7 +206,9 @@ namespace VeyraSetup
                     string json = Net.GetString(url, 20000);
                     RuntimeManifest m = RuntimeManifest.Parse(json);
                     if (m == null) throw new InvalidOperationException("malformed runtime manifest");
-                    if (string.IsNullOrEmpty(m.Url)) m.Url = CombineDirectory(url, m.File);
+                    // The asset lives beside its manifest, so derive the URL from where the
+                    // manifest was actually found: a renamed tag or a mirror keeps working.
+                    if (!string.IsNullOrEmpty(m.File)) m.Url = CombineDirectory(url, m.File);
                     RuntimeBytes = m.Bytes;
                     RuntimeVersion = m.Version;
                     if (log != null) log("manifest " + m.Version + " " + m.Bytes + " bytes from " + url);
