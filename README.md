@@ -1,10 +1,10 @@
 # VEYRA
 
-**A local Android 9 machine for Windows, in a 137 KB native shell.**
+**A local Android 9 machine for Windows, in a 162 KB native shell.**
 
 Drop an `.apk`, inspect it, then run it in a bundled Android-x86 VM accelerated by
 Windows Hypervisor Platform. No cloud, no accounts, no telemetry, no Electron, no
-webview, no AI. A phone over ADB remains a supported alternative.
+webview, and no AI at runtime. A phone over ADB remains a supported alternative.
 
 `Veyra.exe` — the UI and package auditor, .NET Framework 4.8, native GDI painting.
 Current interface: **v0.1.0-alpha**.
@@ -20,7 +20,7 @@ Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
 | Component | Role | Size on disk |
 |---|---|---|
-| Veyra.exe | Native UI, APK auditor, VM controller | 137 KB |
+| Veyra.exe | Native UI, APK auditor, VM controller | 162 KB |
 | QEMU 11.1 (x86_64 only) | Virtual machine engine | ~150 MB |
 | Android-x86 9.0-r2 (x86_64) | The Android kernel, framework and UI | ~950 MB |
 | adb (Android platform-tools) | Install, launch and shell into the VM or a phone | ~8 MB |
@@ -28,6 +28,42 @@ Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 The Android ramdisk in this build is patched to start `adbd` on TCP 5555 and to
 disable ADB authentication, so the installer and the app can drive the machine
 without touching the Android UI.
+
+## How Veyra works
+
+Veyra is a controller, not an emulator. It contains no hypervisor, no ARM
+translation and no Android code of its own: it starts stock QEMU as a child
+process and drives the guest over adb.
+
+```
+Veyra.exe  (C# / .NET Framework 4.8, custom-painted GDI+ window)
+  +-- APK audit: binary manifest, resource table, DEX headers, ABIs, signature
+  +-- QEMU 11.1 child process
+        +-- Android-x86 9.0-r2: kernel + initrd unpacked from the ISO,
+        |   system.sfs attached as a virtual CD-ROM
+        +-- adbd on 127.0.0.1:5555   <--  adb install / am start  <--  Veyra
+```
+
+| Stage | What actually happens |
+|---|---|
+| Audit | Pure C# parsers read `AndroidManifest.xml` (binary XML), `resources.arsc`, the DEX headers and `lib/<abi>/` entries. The verdict is computed from that evidence, never from the file name. |
+| Boot | QEMU starts with `-accel whpx` when the three-second probe succeeds, otherwise `-accel tcg`; 2 vCPU, 1.5-3 GB guest RAM, user-mode networking forwarding TCP 5555. |
+| Install | Veyra waits for `adbd`, then runs the bundled `adb install -r`; a failure is shown with the package manager's own error code. |
+| Run | `am start` launches the main activity. The QEMU window is the Android screen; keyboard and mouse are forwarded by QEMU. |
+| Stop | Closing the VM (or Veyra) terminates the child process; no service or driver is left behind. |
+
+The shell is a single cached 32bpp bitmap: telemetry, package state and console
+lines are drawn into it, and hover is painted on top with one blit. That is why
+`Veyra.exe` stays around 52 MB of working set while the guest has gigabytes.
+
+No state is written elsewhere on the machine: settings live in `veyra.cfg`
+next to the executable, and the installer writes to
+`%LOCALAPPDATA%\Programs\Veyra`, adds only `...\runtime\adb` to the per-user
+`PATH`, and needs no administrator rights. The Android image is not embedded in
+`VeyraSetup.exe`; the installer downloads `veyra-runtime.zip` (about 1.1 GiB)
+from the release named in `runtime.json`, verifies its SHA-256 and unpacks it.
+That is what keeps the installer at 190 KB and lets the runtime be updated
+without shipping a new setup program.
 
 ## Requirements
 
@@ -192,6 +228,89 @@ scratch with the JDK plus D8.
   its absence means "no modules blacklisted". It is not a boot failure, and Veyra
   leaves the read-only Android image untouched rather than patching it away.
 
+## Timeline
+
+![Veyra project timeline: shipped milestones and planned work](docs/roadmap.png)
+
+Filled cards are shipped and tagged with the day they landed; dashed cards are
+planned and carry no date until they are done. The image is generated from
+[`tools/roadmap.py`](tools/roadmap.py), so this section, the to-do list below and
+`docs/roadmap.png` are edited together.
+
+## Road to ARM64
+
+The audit currently rejects every `arm64-v8a`-only package, and the
+[proof of concept](research/arm64-bridge/README.md) shows why writing a
+translator is not the way out: 31 hand-built instructions execute correctly, but
+the interpreter runs at ~12 MIPS, roughly a thousand times slower than native,
+and still lacks NEON, atomics, relocations and ART's native-bridge ABI.
+
+The planned route keeps the x86_64 machine and swaps the image for one that
+already contains a translator:
+
+1. **Image.** Android 13 x86_64 with Google's `libndk_translation`, the layer
+   that runs ARM64 and ARM32 code inside an x86_64 process. The candidate is
+   **Bliss OS 16.9.7** (API 33, 2.34 GB). QEMU stays exactly as it is; the
+   translation happens inside the guest, not in Veyra.
+2. **Spike first.** Boot that image under QEMU `tcg` on the X250 and measure cold
+   boot, idle CPU and app start. This has *not* been verified yet, and it is a
+   hard gate: if two Broadwell cores cannot make it usable, the plan stops there.
+3. **Verify the bridge.** Check `ro.dalvik.vm.native.bridge`, the presence of
+   `libndk_translation.so`, and a real `arm64-v8a` APK in `logcat`, before any UI
+   claims ARM64 support.
+4. **Installer.** The runtime manifest grows an `image` variant with an upstream
+   URL and hash. Bliss's own ISO is fetched at install time rather than re-hosted:
+   the translator is proprietary Google code, and Bliss's licensing page warns
+   about redistributing builds that contain it. It also sidesteps GitHub's 2 GiB
+   per-asset limit.
+5. **App.** The auditor accepts `arm64-v8a` only when the active runtime reports a
+   working bridge, the runtime panel gains an image selector, and the package page
+   shows where the ARM code will execute.
+6. **Ship only on evidence.** The variant stays experimental until boot, install
+   and launch timings are recorded here, and the licence review clears.
+
+The costs are real and would be documented, not hidden: +1.4 GB on disk, a slower
+guest than Android 9, no Vulkan on the HD 5500, no Google Play services, apps that
+require Play Integrity still refusing to run, and no promise of "any ARM64 APK".
+
+Deliberately not planned: a hand-written JIT (the proof of concept shows the
+years involved), Intel Houdini on the current image (ARM32 only and not
+redistributable), an "APK to EXE converter" (an emulator with a shortcut), and
+WSA (discontinued in March 2025 and dependent on the virtualization this machine
+cannot provide).
+
+## To do
+
+### 0.2 - close out Beta-0.1
+
+- [ ] Re-upload `VeyraSetup.exe` and `Veyra.exe` to the `Beta-0.1` release, so the
+      published installer carries the MIT notice and the current icon build.
+- [ ] Verify that installer on a clean Windows profile, not just this machine.
+- [ ] Replace the stale standalone `Veyra.exe` asset (139,776 B, pre-icon).
+
+### 0.2 - persistence
+
+- [ ] Keep installed packages and their data across VM restarts.
+- [ ] Move guest state out of RAM and into the install folder's `data` directory.
+
+### 0.3 - speed and ergonomics
+
+- [ ] QEMU snapshot/resume so a relaunch skips the multi-minute cold boot.
+- [ ] Record boot time in the console and in `--bench`.
+- [ ] Host-to-guest clipboard and drag-and-drop of an APK onto the running VM.
+
+### 0.4 - ARM64 spike
+
+- [ ] Download Bliss OS 16.9.7 and boot it under `tcg` on the X250.
+- [ ] Confirm `libndk_translation` and run one real `arm64-v8a` package.
+- [ ] Licence review, then decide: ship, keep experimental, or drop.
+
+### 1.0 - release engineering
+
+- [ ] Code signing for the executable and installer.
+- [ ] Reproducible build documented from a clean checkout.
+- [ ] Host matrix: Windows 10 and 11, VT enabled and disabled, 4-8 GB RAM.
+
 ## Performance of the shell (measured on the X250)
 
 | Metric | Result (re-measured on this machine) |
@@ -283,6 +402,24 @@ Veyra.exe --apk app.apk
 `VEYRA_RUNTIME` overrides the runtime directory; `VEYRA_VMDATA` overrides the VM
 data directory. Useful when testing a portable folder.
 
+## How this was built
+
+Veyra is built by one developer with no team, and AI is part of the toolchain.
+An AI coding agent drafts code, reads specifications and Android sources, writes
+tests and documentation; the developer sets the scope, makes the product and
+licensing decisions, runs every build on the X250, and rejects or rewrites what
+does not hold up. The measured numbers and the limits in this README are the
+record of that review: several plausible approaches were implemented, measured
+and then documented as dead ends instead of being shipped.
+
+So the code is AI-assisted, not AI-generated end to end. No file reached a
+shipped binary without being compiled, executed and, where it matters, measured
+on real hardware.
+
+The application contains no AI at runtime: no model, no API key, no call to a
+model provider, no telemetry. "No AI" in the introduction describes the product,
+not the process that built it.
+
 ## Repository layout
 
 ```
@@ -298,6 +435,8 @@ src/
 assets/veyra.ico         application icon, embedded in every executable
 installer/                installer UI, bundled-archive reader, uninstaller
 research/arm64-bridge/   ARM64 bridge proof of concept (not shipped)
+docs/roadmap.png         project timeline, generated by tools/roadmap.py
+bench/VeyraBench.apk     RAM/performance benchmark package
 .github/workflows/build.yml
 ```
 
