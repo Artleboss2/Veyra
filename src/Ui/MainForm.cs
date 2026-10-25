@@ -855,18 +855,35 @@ namespace Veyra
             catch { }
         }
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr handle);
+
         private Icon MakeIcon()
         {
+            // build.sh embeds assets/veyra.ico with -win32icon, so the executable,
+            // Explorer, the taskbar and every shortcut share one 9-size artwork.
+            try
+            {
+                Icon embedded = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (embedded != null) return embedded;
+            }
+            catch { }
+
+            // Fallback for a build compiled without the icon resource.
             using (Bitmap bmp = new Bitmap(32, 32))
             {
                 using (Graphics g = Graphics.FromImage(bmp))
                 {
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (SolidBrush b = new SolidBrush(T.Accent)) g.FillRectangle(b, 0, 0, 32, 32);
+                    T.FillRound(g, new RectangleF(0, 0, 32, 32), 7f, T.Accent);
                     T.TextC(g, "V", T.F(17f, true), Color.White, new RectangleF(0, -1, 32, 34));
                 }
                 IntPtr h = bmp.GetHicon();
-                return Icon.FromHandle(h);
+                try
+                {
+                    using (Icon temp = Icon.FromHandle(h)) return (Icon)temp.Clone();
+                }
+                finally { DestroyIcon(h); }
             }
         }
     }

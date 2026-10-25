@@ -8,7 +8,7 @@ webview, no AI. A phone over ADB remains a supported alternative.
 
 `Veyra.exe` — the UI and package auditor, .NET Framework 4.8, native GDI painting.
 Current interface: **v0.1.0-alpha**.
-`VeyraSetup.exe` — a 110 KB installer. It lays down Veyra and adb, then downloads
+`VeyraSetup.exe` — a 190 KB installer. It lays down Veyra and adb, then downloads
 the Android image and QEMU (≈ 1.1 GB) from the GitHub release and verifies the
 archive against the published SHA-256 before unpacking. No admin rights required.
 
@@ -67,7 +67,7 @@ Because adb ships inside the runtime, the app never needs a copy from anywhere
 else: `Settings → ADB path` shows `bundled · runtime\adb\adb.exe`.
 
 The installer carries only the three application files; everything else is fetched
-at install time. That is why the installer is 110 KB instead of 1.1 GB, and why a
+at install time. That is why the installer is 190 KB instead of 1.1 GB, and why a
 release can update Veyra without re-uploading the image.
 
 It is testable without writing outside the project:
@@ -172,7 +172,7 @@ scratch with the JDK plus D8.
 | Animated backdrop | ~6 ms per 90 ms tick, only while the window is focused |
 | Idle CPU | 0.03 % of one core with the window unfocused; 2.1-2.7 % if every second forces a rebuild |
 | Self-test working set | 15 MB, with no window created |
-| Installer | 110 KB (3 embedded files); 245 runtime entries downloaded on install |
+| Installer | 190 KB (3 embedded files); 245 runtime entries downloaded on install |
 
 The 500 MB ceiling is enforced in code: the memory bar turns amber at 400 MB and
 the console records a breach, which the self-test treats as a failure.
@@ -204,6 +204,13 @@ tools/make_runtime_asset.py  release runtime asset + manifest
 behind a 24-byte footer, which the installer reads in place through a range stream.
 `tools/make_runtime_asset.py` packs `runtime/` into the release asset and writes
 `runtime.json` (byte count and SHA-256) beside it.
+
+`assets/veyra.ico` is the application icon: a flat accent square with a white V,
+rendered at nine sizes (16-256 px). `build.sh` embeds it in `Veyra.exe`,
+`VeyraSetup.exe` and `Uninstall.exe` with `-win32icon`, and the window loads the
+same resource for the title bar and taskbar. Regenerate it with
+`python tools/make_icon.py` (needs Pillow); the result is committed, so a build
+never depends on it.
 
 Assemble `runtime/` from the components (not committed):
 
@@ -257,6 +264,7 @@ src/
   Ui/                     native custom-painted UI
   Hardware.cs             host scan and adaptive profile
   NetProbe.cs             keyless speed test + settings
+assets/veyra.ico         application icon, embedded in every executable
 installer/                installer UI, bundled-archive reader, uninstaller
 tools/package_installer.py
 .github/workflows/build.yml

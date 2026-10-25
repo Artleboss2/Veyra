@@ -19,7 +19,7 @@ fi
 rm -f "$OUT" "$SETUP" "$ROOT/build/Uninstall.exe"
 
 echo "==> compiling Veyra.exe"
-"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 \
+"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 -win32icon:"$(cygpath -w "$ROOT/assets/veyra.ico")" \
   -out:"$(cygpath -w "$OUT")" \
   -r:System.dll -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll \
   -r:System.Management.dll -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll \
@@ -33,13 +33,13 @@ fi
 
 echo "==> compiling Uninstall.exe"
 mkdir -p "$ROOT/build"
-"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 \
+"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 -win32icon:"$(cygpath -w "$ROOT/assets/veyra.ico")" \
   -out:"$(cygpath -w "$ROOT/build/Uninstall.exe")" \
   -r:System.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll \
   "$(cygpath -w "$ROOT/installer/Uninstaller.cs")"
 
 echo "==> compiling VeyraSetup.exe bootstrap"
-"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 \
+"$CSC" -nologo -target:winexe -optimize+ -platform:anycpu -warn:2 -win32icon:"$(cygpath -w "$ROOT/assets/veyra.ico")" \
   -out:"$(cygpath -w "$SETUP")" \
   -r:System.dll -r:System.Core.dll -r:System.Drawing.dll -r:System.Windows.Forms.dll \
   -r:System.IO.Compression.dll -r:System.IO.Compression.FileSystem.dll \

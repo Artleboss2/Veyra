@@ -12,6 +12,7 @@ end of its own executable and mounts the ZIP through a range stream.
 import os
 import struct
 import sys
+import time
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -44,7 +45,17 @@ def main():
         raise SystemExit("VeyraSetup.exe already has a payload; rebuild the bootstrap first")
 
     offset = len(bootstrap)
-    with open(SETUP, "wb") as out:
+    # Antivirus scanners briefly hold freshly compiled executables; retry the write.
+    out = None
+    for attempt in range(6):
+        try:
+            out = open(SETUP, "wb")
+            break
+        except PermissionError:
+            if attempt == 5:
+                raise SystemExit("cannot write %s: still locked by another process" % SETUP)
+            time.sleep(1.0)
+    with out:
         out.write(bootstrap)
         with open(PAYLOAD, "rb") as p:
             while True:

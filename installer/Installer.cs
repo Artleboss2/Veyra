@@ -42,6 +42,7 @@ namespace VeyraSetup
         /// <summary>Size of the runtime the last manifest reported, for the window.</summary>
         internal static long RuntimeBytes;
         internal static string RuntimeVersion = "";
+        internal static string LastManifestError = "";
         private static RuntimeManifest cachedManifest;
 
         internal static string InstallDir
@@ -214,6 +215,7 @@ namespace VeyraSetup
                 }
                 catch (Exception ex)
                 {
+                    LastManifestError = ShortError(ex);
                     if (log != null) log("manifest " + url + " failed: " + ex.Message);
                 }
             }
@@ -226,6 +228,19 @@ namespace VeyraSetup
             if (string.IsNullOrEmpty(file)) return url;
             int cut = url.LastIndexOf('/');
             return cut < 0 ? file : url.Substring(0, cut + 1) + file;
+        }
+
+        /// <summary>A short, non-localised reason for the window instead of a framework message.</summary>
+        private static string ShortError(Exception ex)
+        {
+            WebException we = ex as WebException;
+            if (we != null)
+            {
+                HttpWebResponse resp = we.Response as HttpWebResponse;
+                if (resp != null) return "HTTP " + (int)resp.StatusCode;
+                return we.Status.ToString();
+            }
+            return ex.GetType().Name;
         }
 
         /// <summary>Downloads (resumably), verifies and unpacks the runtime into dir.</summary>
@@ -918,7 +933,9 @@ namespace VeyraSetup
                     RuntimeManifest m = manifest ?? Program.ResolveManifest(null, null);
                     if (m == null)
                         throw new InvalidOperationException(
-                            "Could not reach github.com. Check your connection, then press Retry.");
+                            "Runtime manifest unavailable (" +
+                            (Program.LastManifestError.Length > 0 ? Program.LastManifestError : "network error") +
+                            "). Press Retry.");
 
                     Program.EnsureRuntime(Program.InstallDir, m, delegate(double fraction, string message)
                     {
