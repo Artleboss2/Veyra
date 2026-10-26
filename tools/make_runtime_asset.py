@@ -22,8 +22,8 @@ OUT_DIR = os.path.join(ROOT, "build", "release")
 ASSET = os.path.join(OUT_DIR, "veyra-runtime.zip")
 MANIFEST = os.path.join(OUT_DIR, "runtime.json")
 REPO = "https://github.com/Artleboss2/Veyra"
-VERSION = "beta-0.1"
-TAG = "Beta-0.1"
+VERSION = "beta-0.21"
+TAG = "Beta-0.21"
 
 REQUIRED = [
     os.path.join("adb", "adb.exe"),

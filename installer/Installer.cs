@@ -23,7 +23,7 @@ namespace VeyraSetup
         internal const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\Veyra";
 
         /// <summary>Release tag that holds the runtime asset and its manifest.</summary>
-        internal const string ReleaseTag = "Beta-0.1";
+        internal const string ReleaseTag = "Beta-0.21";
         internal const string ManifestName = "runtime.json";
         internal const string RuntimeAssetName = "veyra-runtime.zip";
         private const string RepoUrl = "https://github.com/Artleboss2/Veyra";

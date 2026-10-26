@@ -828,6 +828,13 @@ namespace Veyra
                 : "Point this at adb.exe to install on a phone or tablet over USB.",
                 T.F(7.4f, false), T.TextMuted, new RectangleF(bridge.X + 16, ry, bridge.Width - 32, 42), 3);
 
+            long diskMb = LocalVm.DataDiskBytes / (1024 * 1024);
+            T.Write(g, "Android data", T.F(7.6f, false), T.TextMuted, bridge.X + 16, ry + 48);
+            T.TextR(g, diskMb > 0 ? diskMb + " MB used" : "created on first run", T.F(7.1f, false), T.TextMuted,
+                bridge.Right - 16, ry + 49);
+            WritePath(g, LocalVm.DataDir, T.Mono(6.9f), T.TextSub,
+                new RectangleF(bridge.X + 16, ry + 62, bridge.Width - 32, 14));
+
             float by = bridge.Bottom - 40;
             W.Button(g, pageHits, hover, "btn:openRuntime", new RectangleF(bridge.X + 16, by, 116, 26), "Runtime folder", 1, true);
             W.Button(g, pageHits, hover, "btn:openProject", new RectangleF(bridge.X + 140, by, 108, 26), "App folder", 2, true);
@@ -896,6 +903,7 @@ namespace Veyra
             Row(g, rt.X + 14, ref ry, rt.Width - 28, "Android", "Android-x86 9.0-r2 \u00b7 API 28");
             Row(g, rt.X + 14, ref ry, rt.Width - 28, "ADB", LocalVm.AdbPath(cfg.AdbPath) ?? "not found");
             Row(g, rt.X + 14, ref ry, rt.Width - 28, "Accel", AccelLabel());
+            Row(g, rt.X + 14, ref ry, rt.Width - 28, "Data disk", LocalVm.DataDiskBytes > 0 ? (LocalVm.DataDiskBytes / (1024 * 1024)) + " MB \u00b7 persistent" : "created on first run");
             Row(g, rt.X + 14, ref ry, rt.Width - 28, "Local VM", LocalVm.Running ? "running" : "stopped");
             Row(g, rt.X + 14, ref ry, rt.Width - 28, "Guard", "500 MB working-set ceiling");
             y += 198;

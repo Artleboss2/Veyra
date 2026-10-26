@@ -33,6 +33,20 @@ namespace Veyra
                 if (sys.DiskTotalGb <= 0) errors.Add("Disk probe failed");
                 else checks.Add("disk:" + sys.DiskFreeGb + "GB free");
 
+                // Persistence: the guest disk must live next to the executable and be writable.
+                try
+                {
+                    Directory.CreateDirectory(LocalVm.DataDir);
+                    string probe = Path.Combine(LocalVm.DataDir, ".write-probe");
+                    File.WriteAllText(probe, "ok");
+                    File.Delete(probe);
+                    checks.Add("data:" + LocalVm.DataDir + " disk=" + LocalVm.DataDiskBytes + "B");
+                }
+                catch (Exception ex)
+                {
+                    errors.Add("Data directory not writable: " + ex.Message);
+                }
+
                 prof = Profile.Compute(sys);
                 checks.Add("profile:" + prof.Name + " " + prof.RenderW + "x" + prof.RenderH + "@" + prof.FpsCap);
                 if (prof.FpsCap <= 0 || prof.FpsCap > 60) errors.Add("Profile frame cap out of range");

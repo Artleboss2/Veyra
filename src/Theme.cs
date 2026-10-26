@@ -56,7 +56,7 @@ namespace Veyra
         public static readonly bool NoBackdrop = Environment.GetEnvironmentVariable("VEYRA_NO_BACKDROP") == "1";
 
         public const float Radius = 8f;
-        public const string Version = "0.1.0-alpha";
+        public const string Version = "0.21.0-beta";
 
         private static readonly Dictionary<string, Font> FontCache = new Dictionary<string, Font>();
         private static readonly Dictionary<string, Size> MeasureCache = new Dictionary<string, Size>();

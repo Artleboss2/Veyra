@@ -34,3 +34,6 @@ desktop.ini
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Guest state written next to the executable
+/data/

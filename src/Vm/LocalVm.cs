@@ -39,13 +39,73 @@ namespace Veyra
         public static string Iso { get { return Path.Combine(Root(), @"android\android-x86.iso"); } }
         public static string Adb { get { return Path.Combine(Root(), @"adb\adb.exe"); } }
 
+        /// <summary>Guest state lives beside the executable, not in RAM and not in a per-user cache.</summary>
         public static string DataDir
         {
             get
             {
                 string env = Environment.GetEnvironmentVariable("VEYRA_VMDATA");
                 if (!string.IsNullOrEmpty(env)) return env;
-                return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Veyra", "vmdata");
+                return Path.Combine(AppDir(), "data");
+            }
+        }
+
+        public static string DataDisk { get { return Path.Combine(DataDir, "disk.qcow2"); } }
+
+        public static long DataDiskBytes
+        {
+            get
+            {
+                try { return File.Exists(DataDisk) ? new FileInfo(DataDisk).Length : 0; }
+                catch { return 0; }
+            }
+        }
+
+        /// <summary>
+        /// A qcow2 disk that grows with the packages actually installed. It is created once;
+        /// the guest initrd formats it as ext4 on the first boot and reuses it afterwards.
+        /// </summary>
+        public static bool EnsureDataDisk(out string error)
+        {
+            error = null;
+            try
+            {
+                Directory.CreateDirectory(DataDir);
+                if (File.Exists(DataDisk) && new FileInfo(DataDisk).Length > 0) return true;
+                if (!File.Exists(QemuImg))
+                {
+                    error = "qemu-img.exe is missing from the runtime, so the Android data disk cannot be created.";
+                    return false;
+                }
+                ProcessStartInfo psi = new ProcessStartInfo(QemuImg,
+                    "create -f qcow2 \"" + DataDisk + "\" 6G");
+                psi.UseShellExecute = false;
+                psi.CreateNoWindow = true;
+                psi.WorkingDirectory = Path.GetDirectoryName(QemuImg);
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                using (Process p = Process.Start(psi))
+                {
+                    p.StandardOutput.ReadToEnd();
+                    p.StandardError.ReadToEnd();
+                    if (!p.WaitForExit(30000))
+                    {
+                        try { p.Kill(); } catch { }
+                        error = "qemu-img did not finish creating the data disk.";
+                        return false;
+                    }
+                    if (p.ExitCode != 0 || !File.Exists(DataDisk))
+                    {
+                        error = "qemu-img could not create " + DataDisk + " (code " + p.ExitCode + ").";
+                        return false;
+                    }
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = "Data disk: " + ex.Message;
+                return false;
             }
         }
 
@@ -143,6 +203,7 @@ namespace Veyra
         // ------------------------------------------------------------------ process
         private static Process proc;
         private static bool usingWhpx;
+        private static bool guestReady;
 
         public static bool Running
         {
@@ -164,7 +225,12 @@ namespace Veyra
                 return false;
             }
 
-            Directory.CreateDirectory(DataDir);
+            string diskError;
+            if (!EnsureDataDisk(out diskError))
+            {
+                error = diskError;
+                return false;
+            }
             bool whpx = !forceTcg && WhpxViable();
             if (!TryStart(ramMb, whpx, log, out error))
             {
@@ -182,6 +248,7 @@ namespace Veyra
         private static bool TryStart(int ramMb, bool whpx, Action<string> log, out string error)
         {
             error = null;
+            guestReady = false;
             string args = BuildArgs(ramMb, whpx);
             try
             {
@@ -236,8 +303,9 @@ namespace Veyra
             sb.Append("-m ").Append(ramMb).Append(' ');
             sb.Append("-kernel \"").Append(Kernel).Append("\" ");
             sb.Append("-initrd \"").Append(Initrd).Append("\" ");
-            sb.Append("-append \"root=/dev/ram0 quiet SRC= DATA= SETUPWIZARD=0 androidboot.selinux=permissive androidboot.hardware=android_x86_64\" ");
+            sb.Append("-append \"root=/dev/ram0 SRC= DATA=/dev/sda SETUPWIZARD=0 androidboot.selinux=permissive androidboot.hardware=android_x86_64\" ");
             sb.Append("-cdrom \"").Append(Iso).Append("\" ");
+            sb.Append("-drive \"file=").Append(DataDisk).Append(",if=ide,format=qcow2,cache=writeback\" ");
             sb.Append("-netdev user,id=net0,hostfwd=tcp:127.0.0.1:5555-10.0.2.15:5555 ");
             sb.Append("-device e1000,netdev=net0 ");
             sb.Append("-vga std -display sdl ");
@@ -250,19 +318,37 @@ namespace Veyra
 
         public static bool UsingWhpx { get { return usingWhpx && Running; } }
 
+        /// <summary>
+        /// Shut the guest down cleanly when adb is already answering, so ext4 has flushed
+        /// /data before QEMU goes away. A machine that never booted is killed directly.
+        /// </summary>
         public static void Stop()
         {
+            Process p = proc;
             try
             {
-                if (proc == null) return;
-                if (!proc.HasExited)
+                if (p == null) return;
+                if (!p.HasExited)
                 {
-                    proc.Kill();
-                    proc.WaitForExit(4000);
+                    if (guestReady)
+                    {
+                        string adb = AdbPath(null);
+                        if (!string.IsNullOrEmpty(adb))
+                        {
+                            RunAdb(adb, "-s 127.0.0.1:5555 shell sync", 3000);
+                            RunAdb(adb, "-s 127.0.0.1:5555 shell reboot -p", 3000);
+                            try { p.WaitForExit(8000); } catch { }
+                        }
+                    }
+                    if (!p.HasExited)
+                    {
+                        p.Kill();
+                        p.WaitForExit(4000);
+                    }
                 }
             }
             catch { }
-            finally { proc = null; }
+            finally { proc = null; guestReady = false; }
         }
 
         // ------------------------------------------------------------------ adb
@@ -303,7 +389,10 @@ namespace Veyra
                 if (!Running) return false;
                 string dev = RunAdb(adb, "devices", 5000);
                 if (dev != null && dev.IndexOf("127.0.0.1:5555\tdevice", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    guestReady = true;
                     return true;
+                }
                 if (waited % 15000 == 0 && log != null && waited > 0)
                 {
                     string note = usingWhpx ? "" : " \u2014 software emulation, this takes several minutes";

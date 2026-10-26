@@ -42,18 +42,17 @@ SHIPPED = [
     ("25 Oct", "APK audit", "AXML, ARSC and DEX verdicts before launch"),
     ("25 Oct", "Slim installer", "194 KB setup; 1.1 GiB runtime from GitHub"),
     ("25 Oct", "Beta releases", "0.1 assets refreshed; 0.1.1 licensed build"),
-    ("25 Oct", "Limits documented", "Why ARM64 cannot run in the x86 image"),
+    ("25 Oct", "Persistence", "Packages and /data survive guest restarts"),
     ("25 Oct", "ARM64 proof", "31 hand-built instructions, ~12 MIPS"),
 ]
 
 NEXT = [
-    ("0.2", "Persistence", "Keep installed packages, app data and settings across VM restarts"),
     ("0.3", "Snapshots", "Save and resume VM state so relaunch skips the multi-minute boot"),
     ("0.4", "ARM64 spike", "Boot Bliss OS 16.9.7 (Android 13, libndk) on TCG, measure, review licence"),
+    ("1.0", "Signed build", "Code signing, reproducible builds and a Windows host test matrix"),
 ]
 
 LATER = [
-    ("1.0", "Signed build", "Code signing, reproducible builds and a Windows host test matrix"),
     ("1.x", "ARM64 GA", "Only if the spike is usable on two cores and the licence clears"),
 ]
 
@@ -142,7 +141,7 @@ def main():
     d.text((MARGIN + 18, 82), "Project timeline  \u00b7  what shipped, and what comes next",
            font=font(15), fill=MUTED)
 
-    right = "v0.1.0-alpha"
+    right = "v0.21.0-beta"
     d.text((W - MARGIN - d.textlength(right, font=font(15, True)), 46), right,
            font=font(15, True), fill=ACCENT)
     stamp = "updated 25 Oct 2026"
@@ -163,7 +162,7 @@ def main():
     d.polygon([(cx - 3, y1 + 196), (cx + 3, y1 + 196), (cx, y1 + 202)], fill=(63, 63, 70))
 
     y2 = 368
-    w2 = (avail - gap * 3) // 4
+    w2 = (avail - gap * 2) // 3
     lane(d, "NEXT", "0.2 - 0.4", NEXT, y2, True, [w2] * len(NEXT))
 
     d.line((cx, y2 + 158, cx, y2 + 196), fill=(63, 63, 70), width=1)
@@ -178,7 +177,7 @@ def main():
             "and the translator would stay upstream.")
     d.text((MARGIN, 764), foot, font=font(11), fill=DIM)
 
-    counts = "8 shipped   \u00b7   4 next   \u00b7   2 later"
+    counts = "8 shipped   \u00b7   3 next   \u00b7   1 later"
     d.text((W - MARGIN - d.textlength(counts, font=font(11)), 764), counts,
            font=font(11), fill=DIM)
 

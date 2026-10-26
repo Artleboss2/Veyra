@@ -1,17 +1,17 @@
 # VEYRA
 
-**A local Android 9 machine for Windows, in a 162 KB native shell.**
+**A local Android 9 machine for Windows, in a 165 KB native shell.**
 
 Drop an `.apk`, inspect it, then run it in a bundled Android-x86 VM accelerated by
 Windows Hypervisor Platform. No cloud, no accounts, no telemetry, no Electron, no
 webview, and no AI at runtime. A phone over ADB remains a supported alternative.
 
 `Veyra.exe` — the UI and package auditor, .NET Framework 4.8, native GDI painting.
-Current interface: **v0.1.0-alpha**.
-`VeyraSetup.exe` — a 194 KB installer. It lays down Veyra and adb, then downloads
+Current interface: **v0.21.0-beta**.
+`VeyraSetup.exe` — a 195 KB installer. It lays down Veyra and adb, then downloads
 the Android image and QEMU (≈ 1.1 GB) from the GitHub release and verifies the
 archive against the published SHA-256 before unpacking. No admin rights required. Current build:
-[`Beta-0.2`](https://github.com/Artleboss2/Veyra/releases/tag/Beta-0.2).
+[`Beta-0.21`](https://github.com/Artleboss2/Veyra/releases/tag/Beta-0.21).
 
 Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
@@ -21,7 +21,7 @@ Designed and tested on a **Lenovo ThinkPad X250** (i5-5300U, 8 GB RAM, HD 5500).
 
 | Component | Role | Size on disk |
 |---|---|---|
-| Veyra.exe | Native UI, APK auditor, VM controller | 162 KB |
+| Veyra.exe | Native UI, APK auditor, VM controller | 165 KB |
 | QEMU 11.1 (x86_64 only) | Virtual machine engine | ~150 MB |
 | Android-x86 9.0-r2 (x86_64) | The Android kernel, framework and UI | ~950 MB |
 | adb (Android platform-tools) | Install, launch and shell into the VM or a phone | ~8 MB |
@@ -40,31 +40,32 @@ process and drives the guest over adb.
 Veyra.exe  (C# / .NET Framework 4.8, custom-painted GDI+ window)
   +-- APK audit: binary manifest, resource table, DEX headers, ABIs, signature
   +-- QEMU 11.1 child process
-        +-- Android-x86 9.0-r2: kernel + initrd unpacked from the ISO,
-        |   system.sfs attached as a virtual CD-ROM
+        +-- Android-x86 9.0-r2: kernel + Veyra initrd (mounts system.sfs,
+        |   formats /data once), data on a qcow2 disk
         +-- adbd on 127.0.0.1:5555   <--  adb install / am start  <--  Veyra
 ```
 
 | Stage | What actually happens |
 |---|---|
 | Audit | Pure C# parsers read `AndroidManifest.xml` (binary XML), `resources.arsc`, the DEX headers and `lib/<abi>/` entries. The verdict is computed from that evidence, never from the file name. |
-| Boot | QEMU starts with `-accel whpx` when the three-second probe succeeds, otherwise `-accel tcg`; 2 vCPU, 1.5-3 GB guest RAM, user-mode networking forwarding TCP 5555. |
+| Boot | QEMU starts with `-accel whpx` when the three-second probe succeeds, otherwise `-accel tcg`; 2 vCPU, 1.5-3 GB guest RAM, user-mode networking forwarding TCP 5555, and a qcow2 data disk attached as `/dev/sda`. The first boot writes an ext4 filesystem into that disk; later boots mount it as `/data`. |
 | Install | Veyra waits for `adbd`, then runs the bundled `adb install -r`; a failure is shown with the package manager's own error code. |
 | Run | `am start` launches the main activity. The QEMU window is the Android screen; keyboard and mouse are forwarded by QEMU. |
-| Stop | Closing the VM (or Veyra) terminates the child process; no service or driver is left behind. |
+| Persist | Packages, app data and `/data` settings live on the qcow2 disk in `data\disk.qcow2` next to `Veyra.exe`. They survive restarts of the machine, the app and Windows. |
+| Stop | Veyra asks the guest to `sync` and power off through adb, waits for QEMU to exit, and only then terminates the child process. |
 
 The shell is a single cached 32bpp bitmap: telemetry, package state and console
 lines are drawn into it, and hover is painted on top with one blit. That is why
 `Veyra.exe` stays around 52 MB of working set while the guest has gigabytes.
 
-No state is written elsewhere on the machine: settings live in `veyra.cfg`
-next to the executable, and the installer writes to
-`%LOCALAPPDATA%\Programs\Veyra`, adds only `...\runtime\adb` to the per-user
-`PATH`, and needs no administrator rights. The Android image is not embedded in
-`VeyraSetup.exe`; the installer downloads `veyra-runtime.zip` (about 1.1 GiB)
-from the release named in `runtime.json`, verifies its SHA-256 and unpacks it.
-That is what keeps the installer at 194 KB and lets the runtime be updated
-without shipping a new setup program.
+Nothing is written outside the install folder and the settings file: settings
+live in `veyra.cfg` next to the executable, guest state lives in `data\` beside
+it, and the installer writes to `%LOCALAPPDATA%\Programs\Veyra`, adds only
+`...\runtime\adb` to the per-user `PATH`, and needs no administrator rights.
+The Android image is not embedded in `VeyraSetup.exe`; the installer downloads
+`veyra-runtime.zip` (about 1.1 GiB) from the release named in `runtime.json`,
+verifies its SHA-256 and unpacks it. That is what keeps the installer at 195 KB
+and lets the runtime be updated without shipping a new setup program.
 
 ## Requirements
 
@@ -72,18 +73,17 @@ without shipping a new setup program.
 - **Windows Hypervisor Platform enabled** for usable speed:
   `dism /online /enable-feature /featurename:HypervisorPlatform /all` then reboot.
   Without it the VM still runs, but in software emulation — expect a very slow boot.
-- Free disk: ~1.2 GB plus the Android data you create.
+- Free disk: ~1.2 GB for the runtime plus the guest data disk, which grows as packages are installed (6 GB maximum, usually a few hundred MB).
 - No administrator rights to install; elevation is only needed once for WHPX.
 
 Veyra does not trust the feature list alone. At startup it probes WHPX with a
 three-second throw-away QEMU process; if that fails, or if a real boot has not
-answered adb within 150 seconds, the machine is restarted once in software mode
+answered adb within five minutes, the machine is restarted once in software mode
 instead of leaving you in front of a black window. Measured on the X250
-(Windows 11 23H2, VBS active): `WinHvPlatform.dll` exists and WHPX accepts a
-partition, yet QEMU 11.1 cannot enable QEMU's in-kernel APIC and the Android
-cold boot stalls under QEMU's own APIC emulation, so this particular machine
-ends up in the software path. On hosts where WHPX boots Android, the same probe
-returns true and the accelerated path is used.
+(Windows 11 23H2, VBS active): the probe succeeds and WHPX boots Android in
+about two minutes on the first boot, faster afterwards. The five-minute budget
+covers a cold first boot that is still compiling the framework; it is not a
+promise that every host can use WHPX, so the software path stays as a fallback.
 
 ## Install
 
@@ -105,7 +105,7 @@ Because adb ships inside the runtime, the app never needs a copy from anywhere
 else: `Settings → ADB path` shows `bundled · runtime\adb\adb.exe`.
 
 The installer carries only the four application files (Veyra, the uninstaller, the
-README and the MIT licence); everything else is fetched at install time. That is why the installer is 194 KB instead of 1.1 GB, and why a
+README and the MIT licence); everything else is fetched at install time. That is why the installer is 195 KB instead of 1.1 GB, and why a
 release can update Veyra without re-uploading the image.
 
 It is testable without writing outside the project:
@@ -223,11 +223,8 @@ scratch with the JDK plus D8.
   acceleration modes by itself.
 - Guest RAM (2 GB default) is separate from the app's own ~60 MB working set. The
   500 MB ceiling applies to Veyra itself, not to the Android machine it launches.
-- Data is held in RAM in this build, so packages are reinstalled on each start.
-- Android's `init` logs `failed to load /system/etc/modules.blacklist` during boot.
-  That file is an optional AOSP module blacklist; Android-x86 does not ship it and
-  its absence means "no modules blacklisted". It is not a boot failure, and Veyra
-  leaves the read-only Android image untouched rather than patching it away.
+- Guest data is persistent. The qcow2 disk is created on first run, formatted once, and reused; deleting `data\disk.qcow2` resets Android to a clean state.
+- The guest disk is not encrypted, and uninstalling the app leaves `data\` untouched so packages are not lost by accident.
 
 ## Timeline
 
@@ -293,8 +290,10 @@ cannot provide).
 
 ### 0.2 - persistence
 
-- [ ] Keep installed packages and their data across VM restarts.
-- [ ] Move guest state out of RAM and into the install folder's `data` directory.
+- [x] Keep installed packages and their data across VM restarts.
+- [x] Move guest state out of RAM and into the install folder's `data` directory.
+- [x] Format the disk on first boot, verify a package and a marker file survive a
+      clean reboot, and sync before powering the guest off.
 
 ### 0.3 - speed and ergonomics
 
@@ -324,7 +323,7 @@ cannot provide).
 | Animated backdrop | ~6 ms per 90 ms tick, only while the window is focused |
 | Idle CPU | 0.03 % of one core with the window unfocused; 2.1-2.7 % if every second forces a rebuild |
 | Self-test working set | 15 MB, with no window created |
-| Installer | 194 KB (4 embedded files); 245 runtime entries downloaded on install |
+| Installer | 195 KB (4 embedded files); 245 runtime entries downloaded on install |
 
 The 500 MB ceiling is enforced in code: the memory bar turns amber at 400 MB and
 the console records a breach, which the self-test treats as a failure.

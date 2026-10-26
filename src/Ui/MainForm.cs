@@ -466,7 +466,7 @@ namespace Veyra
                     }
 
                     Func<bool> stop = delegate { return closing; };
-                    bool ready = LocalVm.WaitForAdb(adb, LocalVm.WhpxViable() ? 120000 : 900000, vmLog, stop);
+                    bool ready = LocalVm.WaitForAdb(adb, LocalVm.WhpxViable() ? 300000 : 900000, vmLog, stop);
 
                     // Some Windows builds accept WHPX and then stall Android's cold boot. Rather than
                     // leaving the user with a machine that never answers, drop to software once.
